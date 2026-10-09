@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -8,7 +9,8 @@ import ccxt
 import pandas as pd
 from dotenv import load_dotenv
 
-# Run from the repository root so the upstream model.py is importable.
+# Allow both `python trading_bot/paper_bot.py` and module execution from the repository root.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from model import Kronos, KronosTokenizer, KronosPredictor
 
 load_dotenv(Path(__file__).with_name(".env"))
