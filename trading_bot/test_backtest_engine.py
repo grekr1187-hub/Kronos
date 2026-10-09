@@ -14,7 +14,7 @@ def candles(opens, highs, lows, closes):
 
 class BacktestEngineTests(unittest.TestCase):
     def test_signal_trades_next_bar_not_same_bar(self):
-        data = candles([100, 100, 100], [101, 101, 101], [99, 99, 99], [100, 100, 100])
+        data = candles([100, 100, 100], [100.5, 100.5, 100.5], [99.5, 99.5, 99.5], [100, 100, 100])
         metrics, trades, equity = simulate(data, [0.01, 0.0, 0.0], fee_pct=0, slippage_pct=0)
         self.assertEqual(metrics["closed_trades"], 1)
         self.assertEqual(trades.iloc[0]["entry_price"], 100)
