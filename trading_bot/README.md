@@ -1,22 +1,39 @@
-# Kronos Trading Bot — starter
+# Kronos Trading Bot — paper-trading starter
 
-This folder is a **paper-trading starter**, not a profitable strategy guarantee. It does not submit real orders and does not need exchange API keys.
+**This is simulation only.** The code cannot submit exchange orders and does not load exchange API keys. It does not promise or guarantee profits.
 
-## Intended architecture
-- Fetch public OHLCV candles from a supported exchange.
-- Load the Kronos tokenizer and predictor for forecasts.
-- Turn forecasts into candidate signals only after fees/slippage and risk filters.
-- Simulate entries/exits and record every decision to a local ledger.
-- Require a separate, explicit live-trading implementation and credentials before any real order execution.
+## Run locally
 
-## Important
-Kronos is a time-series forecasting model, not an exchange, broker, or ready-made trading bot. Forecasts are uncertain and must be evaluated out-of-sample. The upstream README itself warns that its example backtest is simplified and not production-ready. Never treat model output as a promise of profit.
+Use Python 3.10+ from the repository root (the folder containing `model.py`):
 
-## Next implementation steps
-1. Select exchange and market (spot vs futures).
-2. Validate data timestamps, candle intervals, fees, slippage, and forecast horizon.
-3. Backtest using walk-forward splits; include costs and compare to buy-and-hold.
-4. Run paper trading and monitor drawdown, order logic, and outages.
-5. Only then consider live trading with restricted API permissions, no withdrawal permission, position limits, a daily loss limit, and a kill switch.
+```bash
+python -m venv .venv
+# activate the virtual environment, then:
+pip install -r trading_bot/requirements.txt
+cp trading_bot/.env.example trading_bot/.env
+python trading_bot/paper_bot.py
+```
 
-The parent repository is the Kronos forecasting model. Keep exchange execution isolated from model inference so forecasts cannot directly bypass risk controls.
+The first run downloads the open Kronos-small model and tokenizer from Hugging Face, so it needs internet access and enough RAM/disk space. The bot uses public OHLCV/ticker endpoints only; it needs no exchange account, API key, or deposit.
+
+## What it does
+
+- Reads completed OHLCV candles and asks Kronos for a forecast.
+- Makes at most one forecast-based entry decision per completed candle.
+- Simulates spot-style buy/sell fills with configurable fee and slippage assumptions.
+- Checks simulated stop-loss/take-profit exits on each polling cycle.
+- Saves a simulated ledger to `paper_trades.csv` and state to `paper_state.csv` in this folder.
+- Enforces position-size limits and rejects any `TRADING_MODE` other than `paper`.
+
+## Configuration
+
+Edit `trading_bot/.env`. Defaults are BTC/USDT on 15-minute candles, a 1,000 USDT virtual starting balance, a 10% maximum position, and no leverage. The configured fee/slippage values are assumptions, not live exchange quotes. Delete the two CSV files to reset the simulation.
+
+## Before considering real trading
+
+1. Verify that the selected venue and product are legally available to you in your jurisdiction.
+2. Run a walk-forward historical backtest including realistic fees, slippage, latency and missed fills.
+3. Paper-trade long enough to cover different market regimes; track net return, maximum drawdown, turnover and benchmark performance.
+4. Review the model outputs and code independently. Forecasts are uncertain; past or simulated performance does not predict future results.
+
+Kronos is a financial time-series forecasting model, not a complete trading strategy or a broker. Its upstream documentation explicitly describes the example backtest as simplified and not production-ready. Do not use this starter with real funds.
