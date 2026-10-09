@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 
 # Allow both `python trading_bot/paper_bot.py` and module execution from the repository root.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from model import Kronos, KronosTokenizer, KronosPredictor
 
 load_dotenv(Path(__file__).with_name(".env"))
 
@@ -110,9 +109,37 @@ def log_trade(action, price, qty, cash, reason):
 
 
 def get_model():
+    # Lazy import keeps risk/utility functions testable without loading torch/model weights.
+    from model import Kronos, KronosTokenizer, KronosPredictor
+
     tokenizer = KronosTokenizer.from_pretrained("NeoQuasar/Kronos-Tokenizer-base")
     model = Kronos.from_pretrained("NeoQuasar/Kronos-small")
     return KronosPredictor(model, tokenizer, max_context=512)
+
+
+def calculate_order_quantity(cash, price):
+    """Return a simulated spot quantity respecting risk, position, fee and slippage caps."""
+    if cash <= 0 or price <= 0:
+        return 0.0
+    risk_budget = cash * RISK_PCT
+    stop_distance = price * STOP_LOSS_PCT
+    qty_by_risk = risk_budget / stop_distance if stop_distance > 0 else 0.0
+    qty_by_cap = (cash * MAX_POSITION_PCT) / price
+    # Exact multiplicative cost model matches the simulated fill below.
+    total_cost_factor = (1 + SLIPPAGE_PCT) * (1 + FEE_PCT)
+    qty_by_cash = cash / (price * total_cost_factor)
+    return max(0.0, min(qty_by_risk, qty_by_cap, qty_by_cash))
+
+
+def exit_reason_for_position(position, price, edge=None, new_candle=False):
+    """Return the first applicable simulated exit rule, or None."""
+    if price <= position.stop:
+        return "stop_loss"
+    if price >= position.target:
+        return "take_profit"
+    if new_candle and edge is not None and edge < -MIN_EDGE_PCT:
+        return "forecast_turn"
+    return None
 
 
 def timeframe_frequency(timeframe):
@@ -192,13 +219,7 @@ def main():
             exited_this_cycle = False
             # Stops and targets are checked on every poll; forecast exits only on new candles.
             if position:
-                exit_reason = None
-                if price <= position.stop:
-                    exit_reason = "stop_loss"
-                elif price >= position.target:
-                    exit_reason = "take_profit"
-                elif new_candle and edge is not None and edge < -MIN_EDGE_PCT:
-                    exit_reason = "forecast_turn"
+                exit_reason = exit_reason_for_position(position, price, edge=edge, new_candle=new_candle)
                 if exit_reason:
                     fill = price * (1 - SLIPPAGE_PCT)
                     proceeds = position.qty * fill * (1 - FEE_PCT)
@@ -210,12 +231,7 @@ def main():
 
             # Evaluate entry signals once per completed candle; never re-enter immediately after an exit.
             if new_candle and not exited_this_cycle and position is None and edge is not None and edge >= MIN_EDGE_PCT:
-                risk_budget = cash * RISK_PCT
-                stop_distance = price * STOP_LOSS_PCT
-                qty_by_risk = risk_budget / stop_distance if stop_distance > 0 else 0.0
-                qty_by_cap = (cash * MAX_POSITION_PCT) / price
-                qty_by_cash = cash / (price * (1 + FEE_PCT + SLIPPAGE_PCT))
-                qty = max(0.0, min(qty_by_risk, qty_by_cap, qty_by_cash))
+                qty = calculate_order_quantity(cash, price)
                 if qty > 0:
                     fill = price * (1 + SLIPPAGE_PCT)
                     cost = qty * fill * (1 + FEE_PCT)
