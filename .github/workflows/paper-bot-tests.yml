@@ -21,4 +21,6 @@ jobs:
       - name: Install test dependencies
         run: python -m pip install --upgrade pip ccxt "pandas>=2.2.0" "python-dotenv>=1.0.1"
       - name: Run unit tests
-        run: python -m unittest trading_bot.test_paper_bot -v
+        run: python -m unittest trading_bot.test_paper_bot trading_bot.test_backtest_engine -v
+      - name: Compile Python files
+        run: python -m compileall -q trading_bot
