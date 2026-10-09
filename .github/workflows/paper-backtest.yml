@@ -9,6 +9,14 @@ on:
       - "trading_bot/backtest_engine.py"
       - "trading_bot/requirements.txt"
       - ".github/workflows/paper-backtest.yml"
+  pull_request:
+    branches:
+      - master
+    paths:
+      - "trading_bot/backtest.py"
+      - "trading_bot/backtest_engine.py"
+      - "trading_bot/requirements.txt"
+      - ".github/workflows/paper-backtest.yml"
   workflow_dispatch:
 
 permissions:
