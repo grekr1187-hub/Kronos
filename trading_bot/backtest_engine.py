@@ -45,7 +45,6 @@ def simulate(candles, forecast_returns, starting_cash=1000.0, risk_pct=0.005,
     pos = None
     trades = []
     equity_rows = []
-    pending_signal = None
 
     def close_position(i, raw_price, reason):
         nonlocal cash, pos
@@ -53,8 +52,7 @@ def simulate(candles, forecast_returns, starting_cash=1000.0, risk_pct=0.005,
         gross = pos.qty * fill
         exit_fee = gross * fee_pct
         cash += gross - exit_fee
-        pnl = gross - exit_fee - (pos.qty * pos.entry + pos.entry_fee - pos.qty * pos.entry)
-        # Entry fee is recorded separately; total trade P&L uses entry notional plus both fees.
+        # Include both entry and exit fees in realized trade P&L.
         entry_notional = pos.qty * pos.entry
         trade_pnl = gross - exit_fee - entry_notional - pos.entry_fee
         trades.append({
@@ -71,12 +69,10 @@ def simulate(candles, forecast_returns, starting_cash=1000.0, risk_pct=0.005,
     for i in range(1, len(df)):
         row = df.iloc[i]
         signal = forecast_returns[i - 1]
-        exited = False
 
         # Forecast known at previous close: act at this candle's open.
         if pos is not None and signal is not None and pd.notna(signal) and signal < -min_edge_pct:
             close_position(i, float(row["open"]), "forecast_turn")
-            exited = True
         elif pos is None and signal is not None and pd.notna(signal) and signal >= min_edge_pct:
             raw_entry = float(row["open"])
             fill = raw_entry * (1 + slippage_pct)
