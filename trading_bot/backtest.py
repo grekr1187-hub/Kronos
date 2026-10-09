@@ -1,4 +1,7 @@
-"""Walk-forward Kronos backtest using historical candles only; never places orders."""
+"""Walk-forward Kronos backtest using historical candles only; never places orders.
+
+This command is intended for short smoke tests first; use larger multi-regime samples before interpreting metrics.
+"""
 import argparse
 from pathlib import Path
 
