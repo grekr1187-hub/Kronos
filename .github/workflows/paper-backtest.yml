@@ -1,0 +1,39 @@
+name: Historical Kronos paper backtest
+
+on:
+  push:
+    branches:
+      - bot/paper-trading-starter
+    paths:
+      - "trading_bot/backtest.py"
+      - "trading_bot/backtest_engine.py"
+      - "trading_bot/requirements.txt"
+      - ".github/workflows/paper-backtest.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: trading_bot/requirements.txt
+      - name: Install model and market-data dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -r trading_bot/requirements.txt
+      - name: Run short walk-forward historical simulation
+        run: python -m trading_bot.backtest --exchange binance --symbol BTC/USDT --timeframe 15m --limit 100 --lookback 64 --forecast-candles 4 --output-dir trading_bot/backtest_results
+      - name: Upload backtest results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kronos-paper-backtest-results
+          path: trading_bot/backtest_results/
+          if-no-files-found: warn
+          retention-days: 14
