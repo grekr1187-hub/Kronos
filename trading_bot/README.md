@@ -29,6 +29,18 @@ The first run downloads the open Kronos-small model and tokenizer from Hugging F
 
 Edit `trading_bot/.env`. Defaults are BTC/USDT on 15-minute candles, a 1,000 USDT virtual starting balance, a 10% maximum position, and no leverage. The configured fee/slippage values are assumptions, not live exchange quotes. Delete the two CSV files to reset the simulation.
 
+## Historical walk-forward backtest (simulation only)
+
+From the repository root, after installing `trading_bot/requirements.txt`:
+
+```bash
+python -m trading_bot.backtest --exchange binance --symbol BTC/USDT --timeframe 15m --limit 100 --lookback 64 --forecast-candles 4
+```
+
+The backtest fetches recent public candles, discards the unfinished candle, generates each forecast only from candles available at that point, and simulates entry on the next candle's open. It uses fee/slippage assumptions, stop-loss/take-profit rules and pessimistically assumes the stop is hit first if both stop and target are touched within the same candle. Metrics and trade/equity CSV files are written under `trading_bot/backtest_results/`. This initial run covers only a short recent sample and is a smoke test, not enough evidence to establish profitability.
+
+A GitHub Actions workflow also runs a short 100-candle backtest on changes to the backtest code and uploads results as an artifact. It does not deploy the bot or place real orders.
+
 ## Before considering real trading
 
 1. Verify that the selected venue and product are legally available to you in your jurisdiction.
