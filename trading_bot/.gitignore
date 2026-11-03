@@ -1,0 +1,4 @@
+.env
+paper_state.csv
+paper_trades.csv
+__pycache__/

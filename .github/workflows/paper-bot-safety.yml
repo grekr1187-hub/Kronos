@@ -1,0 +1,25 @@
+name: Paper bot safety checks
+
+on:
+  push:
+    branches:
+      - bot/paper-trading-starter
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile Python source
+        run: python -m py_compile trading_bot/paper_bot.py
+      - name: Ensure starter does not submit live orders
+        run: |
+          grep -q 'TRADING_MODE' trading_bot/paper_bot.py
+          grep -q 'only supports TRADING_MODE=paper' trading_bot/paper_bot.py
+          ! grep -q 'create_order(' trading_bot/paper_bot.py
